@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Thu Chi & Ngân Quỹ Cá Nhân</title>
+  <!-- Google Fonts: Be Vietnam Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Tailwind Configuration matching the Green Portal Palette -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Be Vietnam Pro"', 'sans-serif'],
+          },
+          colors: {
+            portal: {
+              header: '#22a05b',     // Xanh lá cổng thông tin
+              headerDark: '#1a8249', // Xanh đậm hover
+              subtle: '#eaf7f0',     // Nền xanh nhạt
+              border: '#bbf0d0',     // Viền xanh lá nhẹ
+              active: '#16a34a',     // Active text/icon
+              cardBorder: '#d1fae5', // Viền thẻ
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      background-color: #f3f6f4;
+      color: #1f2937;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #86efac;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #22a05b;
+    }
+    /* Style thẻ như mẫu HCMUAF */
+    .portal-card {
+      background: #ffffff;
+      border: 1px solid #c2ebda;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .portal-card-header {
+      border-bottom: 2px solid #22a05b;
+      padding: 10px 16px;
+      font-weight: 700;
+      color: #1a8249;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ================= TOP HEADER (MÀU XANH NHƯ HÌNH) ================= -->
+  <header class="bg-[#22a05b] text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+      
+      <!-- Logo & Toggle -->
+      <div class="flex items-center space-x-3">
+        <button id="sidebarToggle" class="p-1.5 rounded bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition" title="Ẩn/Hiện Menu">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </button>
+        <div class="flex items-center space-x-2">
+          <span class="text-xl">💰</span>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight">HỆ THỐNG QUẢN LÝ CHI TIÊU & NGÂN QUỸ</h1>
+        </div>
+      </div>
+
+      <!-- Right tools: Realtime clock & Quick Actions -->
+      <div class="flex items-center space-x-3 text-sm">
+        <div class="hidden md:flex items-center bg-emerald-700/60 px-3 py-1 rounded-md text-emerald-50 border border-emerald-400/30">
+          <span class="mr-2">📅</span>
+          <span id="currentDateDisplay">Đang tải ngày...</span>
+        </div>
+        <button onclick="openBudgetModal()" class="bg-white text-[#1a8249] hover:bg-emerald-50 px-3 py-1.5 rounded font-semibold text-xs sm:text-sm shadow-sm transition flex items-center space-x-1">
+          <span>⚙️</span>
+          <span class="hidden sm:inline">Cài Hạn Mức Quỹ</span>
+          <span class="sm:hidden">Quỹ</span>
+        </button>
+        <button onclick="clearAllDataPrompt()" class="bg-red-700/80 hover:bg-red-800 text-white px-2.5 py-1.5 rounded text-xs transition" title="Xóa toàn bộ dữ liệu để nhập lại">
+          🗑️ Xóa trắng dữ liệu
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN LAYOUT (SIDEBAR + CONTENT) ================= -->
+  <div class="flex-1 flex max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-8 py-4 gap-4">
+
+    <!-- LEFT SIDEBAR (Menu chuẩn form xanh mẫu) -->
+    <aside id="sidebar" class="w-64 flex-shrink-0 hidden md:block">
+      <div class="portal-card overflow-hidden">
+        <div class="portal-card-header bg-[#eaf7f0] text-[#1a8249]">
+          <svg class="w-5 h-5 text-[#22a05b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span>Danh mục chức năng</span>
+        </div>
+        <nav class="divide-y divide-emerald-100 text-sm">
+          <a href="#kpi-section" class="flex items-center px-4 py-2.5 text-[#16a34a] font-semibold bg-emerald-50/70 border-l-4 border-[#22a05b] hover:bg-emerald-100 transition">
+            <span class="w-6">📊</span>
+            <span>Tổng quan Thu - Chi</span>
+          </a>
+          <a href="#input-section" class="flex items-center px-4 py-2.5 text-gray-700 hover:text-[#16a34a] hover:bg-emerald-50/50 transition">
+            <span class="w-6">✍️</span>
+            <span>Nhập Tiền Thu - Chi</span>
+          </a>
+          <a href="#chart-section" class="flex items-center px-4 py-2.5 text-gray-700 hover:text-[#16a34a] hover:bg-emerald-50/50 transition">
+            <span class="w-6">📈</span>
+            <span>Biểu đồ Đối So sánh</span>
+          </a>
+          <a href="#fund-section" class="flex items-center px-4 py-2.5 text-gray-700 hover:text-[#16a34a] hover:bg-emerald-50/50 transition">
+            <span class="w-6">🎯</span>
+            <span>Biểu đồ Quỹ (Còn/Dùng)</span>
+          </a>
+          <a href="#history-section" class="flex items-center px-4 py-2.5 text-gray-700 hover:text-[#16a34a] hover:bg-emerald-50/50 transition">
+            <span class="w-6">📋</span>
+            <span>Lịch sử Giao dịch</span>
+          </a>
+          <a href="javascript:void(0)" onclick="openGuideModal()" class="flex items-center px-4 py-2.5 text-gray-700 hover:text-[#16a34a] hover:bg-emerald-50/50 transition">
+            <span class="w-6">📖</span>
+            <span>Quy trình Quản lý (JARS)</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Thẻ thông tin nhanh trạng thái ngân sách tháng -->
+      <div class="portal-card mt-4 p-4 text-xs space-y-2.5 bg-gradient-to-br from-emerald-50 to-white">
+        <div class="font-bold text-[#1a8249] flex items-center justify-between">
+          <span>🛡️ QUY TẮC CẢNH BÁO</span>
+          <span class="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded">JARS</span>
+        </div>
+        <p class="text-gray-600 leading-relaxed">
+          • <strong>50% Thiết yếu:</strong> Tiền nhà, ăn uống cơ bản, đi lại.<br>
+          • <strong>20% Hưởng thụ:</strong> Mua sắm, giải trí, cà phê.<br>
+          • <strong>30% Dự phòng:</strong> Đầu tư & quỹ khẩn cấp 3-6 tháng.
+        </p>
+        <div class="pt-2 border-t border-emerald-200 flex justify-between text-gray-500">
+          <span>Hạn mức tháng:</span>
+          <span id="quickBudgetVal" class="font-bold text-gray-800">0 đ</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT / MAIN CONTENT -->
+    <main class="flex-1 space-y-4">
+
+      <!-- ================= 1. KHỐI TỔNG THU - TỔNG CHI - SỐ DƯ (KPI GRID) ================= -->
+      <section id="kpi-section" class="portal-card overflow-hidden">
+        <div class="portal-card-header bg-[#eaf7f0] justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#22a05b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>TỔNG HỢP THU CHI THEO CHU KỲ</span>
+          </div>
+          <span class="text-xs text-gray-500 font-normal">Tự động cập nhật thời gian thực</span>
+        </div>
+
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          
+          <!-- HÔM NAY -->
+          <div class="bg-white border border-emerald-200 rounded-lg p-3 hover:shadow-md transition">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span class="text-xs font-bold uppercase text-gray-500">HÔM NAY</span>
+              <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-medium" id="todayDatePill">--/--</span>
+            </div>
+            <div class="mt-2 space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Thu:</span>
+                <span id="kpiDayIncome" class="font-bold text-emerald-600">0 đ</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Chi:</span>
+                <span id="kpiDayExpense" class="font-bold text-rose-600">0 đ</span>
+              </div>
+              <div class="flex justify-between pt-1 border-t border-dashed border-gray-200">
+                <span class="text-gray-700 font-semibold text-xs">Dư:</span>
+                <span id="kpiDayNet" class="font-bold text-blue-600">0 đ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TUẦN NÀY -->
+          <div class="bg-white border border-emerald-200 rounded-lg p-3 hover:shadow-md transition">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span class="text-xs font-bold uppercase text-gray-500">TUẦN NÀY</span>
+              <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">Thứ 2 - CN</span>
+            </div>
+            <div class="mt-2 space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Thu:</span>
+                <span id="kpiWeekIncome" class="font-bold text-emerald-600">0 đ</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Chi:</span>
+                <span id="kpiWeekExpense" class="font-bold text-rose-600">0 đ</span>
+              </div>
+              <div class="flex justify-between pt-1 border-t border-dashed border-gray-200">
+                <span class="text-gray-700 font-semibold text-xs">Dư:</span>
+                <span id="kpiWeekNet" class="font-bold text-blue-600">0 đ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- THÁNG NÀY -->
+          <div class="bg-white border-2 border-emerald-500/70 rounded-lg p-3 shadow-sm bg-gradient-to-b from-emerald-50/30 to-white">
+            <div class="flex items-center justify-between pb-2 border-b border-emerald-200">
+              <span class="text-xs font-extrabold uppercase text-[#1a8249]">THÁNG NÀY</span>
+              <span id="currentMonthPill" class="text-xs bg-[#22a05b] text-white px-2 py-0.5 rounded font-semibold">Tháng --</span>
+            </div>
+            <div class="mt-2 space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Tổng Thu:</span>
+                <span id="kpiMonthIncome" class="font-bold text-emerald-600">0 đ</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Tổng Chi:</span>
+                <span id="kpiMonthExpense" class="font-bold text-rose-600">0 đ</span>
+              </div>
+              <div class="flex justify-between pt-1 border-t border-dashed border-emerald-200">
+                <span class="text-gray-800 font-semibold text-xs">Tích Lũy Ròng:</span>
+                <span id="kpiMonthNet" class="font-extrabold text-blue-700">0 đ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- NĂM NAY -->
+          <div class="bg-white border border-emerald-200 rounded-lg p-3 hover:shadow-md transition">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-100">
+              <span class="text-xs font-bold uppercase text-gray-500">NĂM NAY</span>
+              <span id="currentYearPill" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">2026</span>
+            </div>
+            <div class="mt-2 space-y-1 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Thu:</span>
+                <span id="kpiYearIncome" class="font-bold text-emerald-600">0 đ</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500 text-xs">Chi:</span>
+                <span id="kpiYearExpense" class="font-bold text-rose-600">0 đ</span>
+              </div>
+              <div class="flex justify-between pt-1 border-t border-dashed border-gray-200">
+                <span class="text-gray-700 font-semibold text-xs">Dư Cả Năm:</span>
+                <span id="kpiYearNet" class="font-bold text-blue-600">0 đ</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ================= 2. KHỐI NHẬP LIỆU (Ô NHẬP THU & Ô NHẬP CHI) ================= -->
+      <section id="input-section" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        
+        <!-- Ô NHẬP TIỀN THU (MÀU XANH LÁ) -->
+        <div class="portal-card">
+          <div class="portal-card-header bg-[#eaf7f0] text-emerald-800 border-b-2 border-emerald-600">
+            <span class="text-emerald-600 text-lg">➕</span>
+            <span>NHẬP KHOẢN TIỀN THU (INCOME)</span>
+          </div>
+          <form id="incomeForm" class="p-4 space-y-3" onsubmit="handleIncomeSubmit(event)">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Số Tiền Thu (VNĐ) <span class="text-red-500">*</span></label>
+              <div class="relative">
+                <input type="text" id="incomeAmount" required placeholder="Ví dụ: 15.000.000" 
+                  class="w-full px-3 py-2 text-base font-bold text-emerald-700 border border-emerald-300 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  oninput="formatCurrencyInput(this)">
+                <span class="absolute right-3 top-2.5 text-xs font-semibold text-gray-400">VNĐ</span>
+              </div>
+              <!-- Phím bấm số tiền nhanh -->
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <button type="button" onclick="quickAddAmount('incomeAmount', 500000)" class="text-[11px] px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200">+500k</button>
+                <button type="button" onclick="quickAddAmount('incomeAmount', 1000000)" class="text-[11px] px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200">+1Tr</button>
+                <button type="button" onclick="quickAddAmount('incomeAmount', 5000000)" class="text-[11px] px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200">+5Tr</button>
+                <button type="button" onclick="quickAddAmount('incomeAmount', 10000000)" class="text-[11px] px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200">+10Tr</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Nguồn Thu</label>
+                <select id="incomeCategory" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
+                  <option value="Lương cố định">💵 Lương chính</option>
+                  <option value="Thưởng / Phụ cấp">🎁 Thưởng / Hoa hồng</option>
+                  <option value="Kinh doanh / Freelance">💼 Kinh doanh / Nghề tay trái</option>
+                  <option value="Lãi đầu tư">📈 Lợi tức đầu tư</option>
+                  <option value="Thu khác">✨ Khác</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Ngày Thu</label>
+                <input type="date" id="incomeDate" required class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Ghi Chú Nguồn Thu</label>
+              <input type="text" id="incomeNote" placeholder="Ví dụ: Nhận lương tháng 11, Thưởng dự án..." class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white">
+            </div>
+
+            <div class="p-2.5 bg-emerald-50/70 border border-emerald-300 rounded space-y-1.5">
+              <label class="block text-xs font-bold text-emerald-900">
+                Tùy chọn: Chuyển tiền thu này vào Quỹ nào?
+              </label>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+                <label class="flex items-center gap-1.5 p-1.5 bg-white border border-gray-200 rounded cursor-pointer hover:bg-emerald-50">
+                  <input type="radio" name="incomeTargetFund" value="NONE" checked class="text-emerald-600 focus:ring-emerald-500">
+                  <span class="text-gray-700 font-medium">Không chuyển (Thu ngoài Quỹ)</span>
+                </label>
+                <label class="flex items-center gap-1.5 p-1.5 bg-white border border-emerald-200 rounded cursor-pointer hover:bg-emerald-50">
+                  <input type="radio" name="incomeTargetFund" value="SPENDING" class="text-emerald-600 focus:ring-emerald-500">
+                  <span class="text-emerald-800 font-bold">🛒 Quỹ Chi Tiêu</span>
+                </label>
+                <label class="flex items-center gap-1.5 p-1.5 bg-white border border-blue-200 rounded cursor-pointer hover:bg-blue-50">
+                  <input type="radio" name="incomeTargetFund" value="SAVINGS" class="text-blue-600 focus:ring-blue-500">
+                  <span class="text-blue-800 font-bold">🏦 Quỹ Tiết Kiệm</span>
+                </label>
+                <label class="flex items-center gap-1.5 p-1.5 bg-white border border-amber-200 rounded cursor-pointer hover:bg-amber-50">
+                  <input type="radio" name="incomeTargetFund" value="EMERGENCY" class="text-amber-600 focus:ring-amber-500">
+                  <span class="text-amber-800 font-bold">🚨 Quỹ Khẩn Cấp</span>
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full bg-[#22a05b] hover:bg-[#1a8249] text-white font-bold py-2 px-4 rounded shadow transition flex items-center justify-center space-x-1">
+              <span>✔️</span>
+              <span>LƯU KHOẢN TIỀN THU</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Ô NHẬP TIỀN CHI (MÀU ĐỎ/CAM THEO QUY CHUẨN QUỸ) -->
+        <div class="portal-card">
+          <div class="portal-card-header bg-[#fef2f2] text-rose-800 border-b-2 border-rose-500">
+            <span class="text-rose-600 text-lg">➖</span>
+            <span>NHẬP KHOẢN TIỀN CHI (EXPENSE)</span>
+          </div>
+          <form id="expenseForm" class="p-4 space-y-3" onsubmit="handleExpenseSubmit(event)">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Số Tiền Chi (VNĐ) <span class="text-red-500">*</span></label>
+              <div class="relative">
+                <input type="text" id="expenseAmount" required placeholder="Ví dụ: 80.000" 
+                  class="w-full px-3 py-2 text-base font-bold text-rose-700 border border-rose-300 rounded focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+                  oninput="formatCurrencyInput(this)">
+                <span class="absolute right-3 top-2.5 text-xs font-semibold text-gray-400">VNĐ</span>
+              </div>
+              <!-- Phím bấm số tiền nhanh -->
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <button type="button" onclick="quickAddAmount('expenseAmount', 30000)" class="text-[11px] px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200">+30k</button>
+                <button type="button" onclick="quickAddAmount('expenseAmount', 50000)" class="text-[11px] px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200">+50k</button>
+                <button type="button" onclick="quickAddAmount('expenseAmount', 100000)" class="text-[11px] px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200">+100k</button>
+                <button type="button" onclick="quickAddAmount('expenseAmount', 200000)" class="text-[11px] px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200">+200k</button>
+                <button type="button" onclick="quickAddAmount('expenseAmount', 500000)" class="text-[11px] px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200">+500k</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Danh Mục Chi</label>
+                <select id="expenseCategory" class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white">
+                  <option value="Ăn uống">🍜 Ăn uống, cà phê</option>
+                  <option value="Nhà cửa & Điện nước">🏠 Tiền phòng, điện nước</option>
+                  <option value="Đi lại & Xăng xe">🛵 Xăng xe, bảo dưỡng</option>
+                  <option value="Mua sắm">🛍️ Mua sắm vật dụng</option>
+                  <option value="Y tế & Thuốc">💊 Sức khỏe, y tế</option>
+                  <option value="Học tập & Sách">📚 Khóa học, tài liệu</option>
+                  <option value="Hiếu hỉ / Quan hệ">🤝 Bạn bè, quà cáp</option>
+                  <option value="Khác">🏷️ Chi khác</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Trích Từ Quỹ</label>
+                <select id="expenseFund" onchange="updateExpenseFundBalanceNotice()" class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white font-medium text-emerald-800">
+                  <option value="SPENDING">🛒 Quỹ Chi Tiêu</option>
+                  <option value="SAVINGS">🏦 Quỹ Tiết Kiệm</option>
+                  <option value="EMERGENCY">🚨 Quỹ Khẩn Cấp</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Ngày Chi</label>
+                <input type="date" id="expenseDate" required class="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Ghi Chú Chi Tiêu</label>
+              <input type="text" id="expenseNote" placeholder="Ví dụ: Ăn trưa đồng nghiệp, Đổ xăng, Mua đồ gia dụng..." class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white">
+            </div>
+
+            <!-- Khung kiểm tra Quỹ Còn Lại Khả Dụng -->
+            <div class="p-2.5 rounded bg-amber-50/80 border border-amber-300 flex items-center justify-between text-xs">
+              <span class="text-gray-800 font-semibold flex items-center gap-1" id="expenseFundNoticeLabel">
+                <span>🛡️</span> Quỹ Chi Tiêu Còn Lại:
+              </span>
+              <span id="expenseFormRemainFund" class="font-extrabold text-emerald-700 text-sm">0 đ</span>
+            </div>
+
+            <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded shadow transition flex items-center justify-center space-x-1">
+              <span>✔️</span>
+              <span>LƯU KHOẢN TIỀN CHI</span>
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+      <!-- ================= 3. KHỐI BIỂU ĐỒ (BIỂU ĐỒ THU CHI & BIỂU ĐỒ TRÒN QUỸ) ================= -->
+      <section id="chart-section" class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        <!-- BIỂU ĐỒ CỘT THU - CHI THEO CHU KỲ (Chiếm 7 phần) -->
+        <div class="lg:col-span-7 portal-card">
+          <div class="portal-card-header bg-[#eaf7f0] justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-[#22a05b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              <span>BIỂU ĐỒ ĐỐI SÁNH THU VS CHI</span>
+            </div>
+            
+            <!-- Nút chọn khoảng thời gian -->
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+              <button type="button" onclick="switchBarPeriod('DAY')" id="btnPeriodDay" class="px-2.5 py-1 text-xs font-semibold rounded-l border border-emerald-400 bg-white text-emerald-800 hover:bg-emerald-50">Ngày</button>
+              <button type="button" onclick="switchBarPeriod('WEEK')" id="btnPeriodWeek" class="px-2.5 py-1 text-xs font-semibold border-t border-b border-emerald-400 bg-white text-emerald-800 hover:bg-emerald-50">Tuần</button>
+              <button type="button" onclick="switchBarPeriod('MONTH')" id="btnPeriodMonth" class="px-2.5 py-1 text-xs font-semibold border border-emerald-400 bg-[#22a05b] text-white">Tháng</button>
+              <button type="button" onclick="switchBarPeriod('YEAR')" id="btnPeriodYear" class="px-2.5 py-1 text-xs font-semibold rounded-r border border-emerald-400 bg-white text-emerald-800 hover:bg-emerald-50">Năm</button>
+            </div>
+          </div>
+
+          <div class="p-4">
+            <div class="h-64 sm:h-72 w-full relative">
+              <canvas id="barComparisonChart"></canvas>
+            </div>
+            <div class="mt-2 text-center text-xs font-bold flex justify-center items-center gap-6">
+              <span class="inline-flex items-center gap-1.5 text-emerald-700">
+                <span class="w-3.5 h-3.5 bg-[#22a05b] rounded-sm inline-block shadow-sm"></span> 
+                Tiền Thu
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-rose-700">
+                <span class="w-3.5 h-3.5 bg-[#e11d48] rounded-sm inline-block shadow-sm"></span> 
+                Tiền Chi
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BIỂU ĐỒ TRÒN THỂ HIỆN 3 QUỸ: CHI TIÊU - TIẾT KIỆM - KHẨN CẤP (Chiếm 5 phần) -->
+        <div id="fund-section" class="lg:col-span-5 portal-card">
+          <div class="portal-card-header bg-[#eaf7f0] justify-between flex-wrap gap-1.5">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-[#22a05b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+              </svg>
+              <span>TRẠNG THÁI 3 NGÂN QUỸ</span>
+            </div>
+            <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">Cấm Quỹ Âm</span>
+          </div>
+
+          <div class="p-3.5 space-y-3">
+            <!-- 3 Tabs chọn Quỹ để xem Biểu đồ tròn -->
+            <div class="grid grid-cols-3 gap-1.5 p-1 bg-gray-100 rounded-lg text-xs font-bold text-center">
+              <button type="button" onclick="switchFundTab('SPENDING')" id="tabBtnSPENDING" class="py-1.5 px-1 rounded bg-[#22a05b] text-white shadow-sm transition">
+                🛒 Quỹ Chi Tiêu
+              </button>
+              <button type="button" onclick="switchFundTab('SAVINGS')" id="tabBtnSAVINGS" class="py-1.5 px-1 rounded bg-transparent text-gray-600 hover:text-blue-700 hover:bg-white/60 transition">
+                🏦 Quỹ Tiết Kiệm
+              </button>
+              <button type="button" onclick="switchFundTab('EMERGENCY')" id="tabBtnEMERGENCY" class="py-1.5 px-1 rounded bg-transparent text-gray-600 hover:text-amber-700 hover:bg-white/60 transition">
+                🚨 Quỹ Khẩn Cấp
+              </button>
+            </div>
+
+            <!-- Tên Quỹ đang chọn -->
+            <div class="flex items-center justify-between text-xs font-bold pt-1">
+              <span id="activeFundHeading" class="text-emerald-800 flex items-center gap-1">
+                <span>🛒</span> Đang xem: QUỸ CHI TIÊU
+              </span>
+              <span id="activeFundTag" class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">Ví sinh hoạt hàng ngày</span>
+            </div>
+
+            <!-- Biểu đồ tròn Doughnut của Quỹ đang chọn -->
+            <div class="h-44 sm:h-48 relative flex items-center justify-center">
+              <canvas id="fundDoughnutChart"></canvas>
+            </div>
+
+            <!-- Tóm tắt số liệu 3 ô cho Quỹ đang chọn -->
+            <div class="pt-1.5 border-t border-gray-100 grid grid-cols-3 gap-1 text-center">
+              <div class="bg-gray-50 p-2 rounded border border-gray-200">
+                <div class="text-[10px] text-gray-500 font-medium">TỔNG QUỸ</div>
+                <div id="sumTotalFund" class="text-xs sm:text-sm font-bold text-gray-800">0 đ</div>
+              </div>
+              <div class="bg-rose-50 p-2 rounded border border-rose-200">
+                <div class="text-[10px] text-rose-600 font-medium">ĐÃ DÙNG</div>
+                <div id="sumUsedFund" class="text-xs sm:text-sm font-bold text-rose-700">0 đ</div>
+              </div>
+              <div class="bg-emerald-50 p-2 rounded border border-emerald-200">
+                <div class="text-[10px] text-emerald-600 font-medium">CÒN LẠI</div>
+                <div id="sumRemainFund" class="text-xs sm:text-sm font-bold text-emerald-700">0 đ</div>
+              </div>
+            </div>
+
+            <!-- BẢNG TỔNG QUAN SỐ DƯ CẢ 3 QUỸ HÀNG NGANG -->
+            <div class="p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs space-y-1">
+              <div class="text-[11px] font-bold text-gray-700 flex justify-between">
+                <span>📊 TỔNG TÀI SẢN TRONG 3 QUỸ:</span>
+                <span id="totalAllFundsSum" class="font-extrabold text-blue-700 text-sm">0 đ</span>
+              </div>
+              <div class="grid grid-cols-3 gap-1 pt-1 text-center text-[11px]">
+                <div class="p-1 rounded bg-emerald-50 border border-emerald-200">
+                  <div class="text-emerald-800 font-bold">🛒 Chi Tiêu</div>
+                  <div id="miniRemainSpending" class="font-extrabold text-emerald-700">0 đ</div>
+                </div>
+                <div class="p-1 rounded bg-blue-50 border border-blue-200">
+                  <div class="text-blue-800 font-bold">🏦 Tiết Kiệm</div>
+                  <div id="miniRemainSavings" class="font-extrabold text-blue-700">0 đ</div>
+                </div>
+                <div class="p-1 rounded bg-amber-50 border border-amber-200">
+                  <div class="text-amber-800 font-bold">🚨 Khẩn Cấp</div>
+                  <div id="miniRemainEmergency" class="font-extrabold text-amber-700">0 đ</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ================= CÔNG CỤ NẠP & CHUYỂN TIỀN VÀO QUỸ (2 NGUỒN) ================= -->
+            <div class="pt-2.5 border-t border-emerald-200 bg-emerald-50/70 p-3 rounded-lg border border-emerald-300 space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                  <span>🔄</span>
+                  <span>NẠP & CHUYỂN TIỀN VÀO QUỸ:</span>
+                </label>
+                <span class="text-[10px] bg-emerald-200 text-emerald-900 font-semibold px-1.5 py-0.5 rounded">2 Nguồn: Thu Nhập & Quỹ Chi Tiêu</span>
+              </div>
+
+              <!-- Chọn Quỹ Nhận và Nguồn Chuyển -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label class="block text-[11px] font-semibold text-gray-700 mb-0.5">1. Quỹ Nhận Tiền:</label>
+                  <select id="transferTargetFund" onchange="updateTransferUI()" class="w-full px-2 py-1.5 border border-emerald-300 rounded font-bold text-emerald-800 bg-white">
+                    <option value="SAVINGS">🏦 Quỹ Tiết Kiệm</option>
+                    <option value="EMERGENCY">🚨 Quỹ Khẩn Cấp</option>
+                    <option value="SPENDING">🛒 Quỹ Chi Tiêu</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-gray-700 mb-0.5">2. Nguồn Tiền Chuyển:</label>
+                  <select id="transferSource" onchange="updateTransferUI()" class="w-full px-2 py-1.5 border border-emerald-300 rounded font-bold text-gray-800 bg-white">
+                    <option value="INCOME">🟢 Nguồn 1: Thu Nhập / Nạp Mới</option>
+                    <option value="FROM_SPENDING">🔄 Nguồn 2: Trích Từ Quỹ Chi Tiêu</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Cảnh báo số dư Quỹ Chi Tiêu khi chọn Nguồn 2 -->
+              <div id="transferSpendingNotice" class="hidden text-[11px] p-1.5 rounded bg-amber-100 text-amber-900 border border-amber-300 flex justify-between">
+                <span>Quỹ Chi Tiêu hiện còn khả dụng để trích:</span>
+                <span id="transferSpendingAvailable" class="font-extrabold text-emerald-800">0 đ</span>
+              </div>
+
+              <!-- Nhập số tiền chuyển -->
+              <div>
+                <label class="block text-[11px] font-semibold text-gray-700 mb-0.5">3. Số Tiền Chuyển (VNĐ):</label>
+                <div class="relative">
+                  <input type="text" id="transferAmount" placeholder="Ví dụ: 500.000" 
+                    class="w-full px-3 py-1.5 text-sm font-bold text-emerald-800 border border-emerald-400 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    oninput="formatCurrencyInput(this)">
+                  <span class="absolute right-3 top-1.5 text-xs font-semibold text-gray-400">VNĐ</span>
+                </div>
+                <!-- Phím nhanh -->
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <button type="button" onclick="quickAddAmount('transferAmount', 100000)" class="text-[10px] px-2 py-0.5 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-medium">+100k</button>
+                  <button type="button" onclick="quickAddAmount('transferAmount', 200000)" class="text-[10px] px-2 py-0.5 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-medium">+200k</button>
+                  <button type="button" onclick="quickAddAmount('transferAmount', 500000)" class="text-[10px] px-2 py-0.5 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-medium">+500k</button>
+                  <button type="button" onclick="quickAddAmount('transferAmount', 1000000)" class="text-[10px] px-2 py-0.5 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-medium">+1Tr</button>
+                  <button type="button" onclick="quickAddAmount('transferAmount', 5000000)" class="text-[10px] px-2 py-0.5 bg-white hover:bg-emerald-100 text-emerald-800 rounded border border-emerald-300 font-medium">+5Tr</button>
+                </div>
+              </div>
+
+              <!-- Nút xác nhận chuyển tiền -->
+              <button type="button" onclick="handleTransferFundSubmit()" class="w-full bg-[#22a05b] hover:bg-[#1a8249] text-white py-2 px-3 rounded text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
+                <span>🚀</span> XÁC NHẬN CHUYỂN TIỀN VÀO QUỸ
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. KHỐI LỊCH SỬ THU CHI VÀ TÌM KIẾM ================= -->
+      <section id="history-section" class="portal-card overflow-hidden">
+        <div class="portal-card-header bg-[#eaf7f0] justify-between flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-[#22a05b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>SỔ NHẬT KÝ THU CHI CHI TIẾT</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Nút xuất CSV -->
+            <button onclick="exportToCSV()" class="px-2.5 py-1 text-xs font-semibold bg-white text-emerald-800 border border-emerald-400 rounded hover:bg-emerald-50 transition flex items-center gap-1">
+              <span>📥</span> Xuất Excel/CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="p-3 bg-gray-50 border-b border-gray-200 grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+          <div>
+            <input type="text" id="searchInput" placeholder="Tìm theo ghi chú, danh mục..." oninput="renderHistoryTable()"
+              class="w-full px-2.5 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 bg-white">
+          </div>
+          <div>
+            <select id="filterType" onchange="renderHistoryTable()" class="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 bg-white">
+              <option value="ALL">Tất cả loại giao dịch</option>
+              <option value="INCOME">Chỉ tiền Thu (+)</option>
+              <option value="EXPENSE">Chỉ tiền Chi (-)</option>
+            </select>
+          </div>
+          <div>
+            <select id="filterFund" onchange="renderHistoryTable()" class="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-emerald-500 bg-white">
+              <option value="ALL">Tất cả các Quỹ</option>
+              <option value="SPENDING">🛒 Quỹ Chi Tiêu</option>
+              <option value="SAVINGS">🏦 Quỹ Tiết Kiệm</option>
+              <option value="EMERGENCY">🚨 Quỹ Khẩn Cấp</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-end text-gray-500 font-medium">
+            <span>Tổng giao dịch: <strong id="totalTransactionsBadge" class="text-emerald-700">0</strong></span>
+          </div>
+        </div>
+
+        <!-- Table Data -->
+        <div class="overflow-x-auto max-h-96 custom-scroll">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 uppercase font-semibold sticky top-0 border-b border-gray-200">
+              <tr>
+                <th class="py-2.5 px-3">Thời gian</th>
+                <th class="py-2.5 px-3">Loại</th>
+                <th class="py-2.5 px-3">Số tiền</th>
+                <th class="py-2.5 px-3">Danh mục / Nguồn</th>
+                <th class="py-2.5 px-3">Quỹ trích</th>
+                <th class="py-2.5 px-3">Ghi chú</th>
+                <th class="py-2.5 px-3 text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="transactionTableBody" class="divide-y divide-gray-200">
+              <!-- Render động bằng JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================= MODAL CÀI ĐẶT HẠN MỨC QUỸ ================= -->
+  <div id="budgetModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-md w-full shadow-2xl overflow-hidden border border-emerald-300">
+      <div class="portal-card-header bg-[#eaf7f0]">
+        <span>⚙️ THIẾT LẬP HẠN MỨC QUỸ THÁNG</span>
+      </div>
+      <div class="p-4 space-y-4 text-sm">
+        <p class="text-xs text-gray-600">
+          Hạn mức ngân quỹ tháng dùng để tính toán <strong>Biểu đồ tròn Quỹ Còn Lại và Quỹ Đã Dùng</strong>, đồng thời kích hoạt cảnh báo khi bạn chi tiêu quá mức.
+        </p>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Tổng hạn mức quỹ tháng (VNĐ):</label>
+          <div class="relative">
+            <input type="text" id="modalBudgetAmount" placeholder="0" 
+              class="w-full px-3 py-2 text-base font-bold text-emerald-800 border border-emerald-400 rounded focus:ring-2 focus:ring-emerald-500"
+              oninput="formatCurrencyInput(this)">
+            <span class="absolute right-3 top-2.5 text-xs font-semibold text-gray-400">VNĐ</span>
+          </div>
+        </div>
+        <div class="bg-emerald-50 p-2.5 rounded text-xs space-y-1 text-emerald-900 border border-emerald-200">
+          <div class="font-bold">Đề xuất phân bổ chuẩn JARS (50-30-20):</div>
+          <div>• Quỹ Thiết yếu (55%): <span id="suggNecVal" class="font-semibold">11.000.000 đ</span></div>
+          <div>• Quỹ Hưởng thụ (20%): <span id="suggWantVal" class="font-semibold">4.000.000 đ</span></div>
+          <div>• Quỹ Tiết kiệm (25%): <span id="suggGrowthVal" class="font-semibold">5.000.000 đ</span></div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button onclick="closeBudgetModal()" class="px-3 py-1.5 text-xs border border-gray-300 rounded text-gray-600 hover:bg-gray-100">Đóng</button>
+          <button onclick="saveBudgetSetting()" class="px-4 py-1.5 text-xs font-bold bg-[#22a05b] hover:bg-[#1a8249] text-white rounded">Lưu Thay Đổi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL XEM QUY TRÌNH (TÓM TẮT FILE QUITRINH.MD) ================= -->
+  <div id="guideModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-emerald-300">
+      <div class="portal-card-header bg-[#eaf7f0] justify-between">
+        <span>📖 QUY TRÌNH QUẢN LÝ CHI TIÊU CHUẨN (TÓM TẮT TỪ QUITRINH.MD)</span>
+        <button onclick="closeGuideModal()" class="text-gray-500 hover:text-black font-bold">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto space-y-3 text-xs leading-relaxed text-gray-700 custom-scroll">
+        <h4 class="font-bold text-sm text-[#1a8249] border-b pb-1">1. QUY TRÌNH 4 BƯỚC THỜI GIAN</h4>
+        <p><strong>• Hàng ngày (Daily - Dưới 2 phút):</strong> Nhập ngay các khoản thu chi trong vòng 24 giờ. Kiểm tra số dư quỹ hàng ngày để dừng các khoản chi bốc đồng.</p>
+        <p><strong>• Hàng tuần (Weekly - 15 phút Chủ nhật):</strong> Đối soát chi phí tuần so với 1/4 hạn mức tháng. Nếu tuần này lạm chi 15%, tuần sau giảm chi hưởng thụ 15% để bảo toàn quỹ.</p>
+        <p><strong>• Hàng tháng (Monthly Closing):</strong> Đóng sổ vào ngày nhận lương, kiểm tra Biểu đồ tròn Quỹ và Tỷ lệ tiết kiệm (Mục tiêu >= 20%). Chuyển tiền thừa sang đầu tư.</p>
+        <p><strong>• Hàng năm (Annual Planning):</strong> Xem lại biểu đồ 12 tháng để nhận diện tháng cao điểm, hoạch định quỹ khẩn cấp từ 3 - 6 tháng sinh hoạt.</p>
+
+        <h4 class="font-bold text-sm text-[#1a8249] border-b pb-1 pt-2">2. CÔNG THỨC QUẢN TRỊ TRẠNG THÁI QUỸ</h4>
+        <div class="bg-gray-100 p-2.5 rounded font-mono text-[11px] text-gray-800">
+          Quỹ Còn Lại = Tổng Hạn Mức Quỹ - Tổng Tiền Đã Chi<br>
+          Tỷ Lệ Tiết Kiệm = (Tổng Thu - Tổng Chi) / Tổng Thu * 100%
+        </div>
+      </div>
+      <div class="p-3 bg-gray-50 border-t flex justify-end">
+        <button onclick="closeGuideModal()" class="px-4 py-1.5 text-xs bg-[#22a05b] text-white rounded font-bold">Đã hiểu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ENGINE ================= -->
+  <script>
+    // -------------------------------------------------------------
+    // KHỞI TẠO CẤU TRÚC DỮ LIỆU & LOCAL STORAGE
+    // -------------------------------------------------------------
+    const STORAGE_KEY = 'QUANLYCHITIEU_DATA_REAL_V5';
+    const FUNDS_KEY = 'QUANLYCHITIEU_FUNDS_REAL_V5';
+
+    let transactions = [];
+    let funds = {
+      SPENDING: 0,   // Quỹ Chi Tiêu
+      SAVINGS: 0,    // Quỹ Tiết Kiệm
+      EMERGENCY: 0   // Quỹ Khẩn Cấp
+    };
+    let activeFundTab = 'SPENDING'; // 'SPENDING' | 'SAVINGS' | 'EMERGENCY'
+    let currentBarPeriod = 'MONTH'; // 'DAY' | 'WEEK' | 'MONTH' | 'YEAR'
+
+    // Chart.js instances
+    let barChartInstance = null;
+    let doughnutChartInstance = null;
+
+    // -------------------------------------------------------------
+    // HÀM TIỆN ÍCH: ĐỊNH DẠNG TIỀN, PARSE, NGÀY, ...
+    // -------------------------------------------------------------
+
+    /** Định dạng số thành chuỗi tiền VNĐ: 1.500.000 đ */
+    function formatVND(value) {
+      if (value === null || value === undefined || isNaN(value)) return '0 đ';
+      return new Intl.NumberFormat('vi-VN').format(Math.round(value)) + ' đ';
+    }
+
+    /** Parse chuỗi tiền có dấu chấm/phẩy thành số nguyên */
+    function parseCurrencyString(str) {
+      if (!str) return 0;
+      // Loại bỏ tất cả ký tự không phải số
+      const cleaned = String(str).replace(/[^0-9]/g, '');
+      return parseInt(cleaned, 10) || 0;
+    }
+
+    /** Tự động format input tiền tệ khi người dùng gõ (thêm dấu chấm phân cách hàng nghìn) */
+    function formatCurrencyInput(el) {
+      // Lưu vị trí cursor
+      const pos = el.selectionStart;
+      const oldLen = el.value.length;
+      // Parse ra số rồi format lại
+      const num = parseCurrencyString(el.value);
+      if (num === 0) {
+        el.value = '';
+        return;
+      }
+      el.value = new Intl.NumberFormat('vi-VN').format(num);
+      // Khôi phục cursor hợp lý
+      const newLen = el.value.length;
+      const newPos = Math.max(0, pos + (newLen - oldLen));
+      el.setSelectionRange(newPos, newPos);
+    }
+
+    /** Thêm nhanh số tiền vào ô input */
+    function quickAddAmount(inputId, amount) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      const current = parseCurrencyString(el.value);
+      const newVal = current + amount;
+      el.value = new Intl.NumberFormat('vi-VN').format(newVal);
+    }
+
+    /** Đặt ngày mặc định cho các input date = hôm nay */
+    function initDateInputs() {
+      const todayIso = new Date().toISOString().split('T')[0];
+      const incDate = document.getElementById('incomeDate');
+      const expDate = document.getElementById('expenseDate');
+      if (incDate) incDate.value = todayIso;
+      if (expDate) expDate.value = todayIso;
+    }
+
+    /** Cập nhật hiển thị ngày trên header: Thứ 2, 23 Tháng 11, 2026 */
+    function updateHeaderDateDisplay() {
+      const now = new Date();
+      const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+      const dayName = dayNames[now.getDay()];
+      const day = now.getDate();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+
+      const dateStr = `${dayName}, ${day} Tháng ${month}, ${year}`;
+      const el = document.getElementById('currentDateDisplay');
+      if (el) el.innerText = dateStr;
+
+      // Cập nhật pill ngày hôm nay
+      const todayPill = document.getElementById('todayDatePill');
+      if (todayPill) todayPill.innerText = `${day}/${month < 10 ? '0' + month : month}`;
+
+      // Cập nhật pill tháng hiện tại
+      const monthPill = document.getElementById('currentMonthPill');
+      if (monthPill) monthPill.innerText = `Tháng ${month}/${year}`;
+
+      // Cập nhật pill năm hiện tại
+      const yearPill = document.getElementById('currentYearPill');
+      if (yearPill) yearPill.innerText = String(year);
+
+      // Cập nhật sidebar Hạn mức tháng
+      const quickBudget = document.getElementById('quickBudgetVal');
+      if (quickBudget) quickBudget.innerText = formatVND(funds.SPENDING);
+    }
+
+    // -------------------------------------------------------------
+    // KHỞI ĐỘNG ỨNG DỤNG (ON LOAD)
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Tải 3 Quỹ (Mặc định 0 đ)
+      const savedFunds = localStorage.getItem(FUNDS_KEY);
+      if (savedFunds) {
+        try {
+          funds = Object.assign({ SPENDING: 0, SAVINGS: 0, EMERGENCY: 0 }, JSON.parse(savedFunds));
+        } catch (e) {
+          funds = { SPENDING: 0, SAVINGS: 0, EMERGENCY: 0 };
+        }
+      } else {
+        const oldBudget = localStorage.getItem('QUANLYCHITIEU_BUDGET_REAL_V3');
+        const oldB = oldBudget !== null ? (parseInt(oldBudget, 10) || 0) : 0;
+        funds = { SPENDING: oldB, SAVINGS: 0, EMERGENCY: 0 };
+        saveFunds();
+      }
+
+      // 2. Tải Giao dịch thực tế của người dùng
+      const savedTx = localStorage.getItem(STORAGE_KEY);
+      if (savedTx) {
+        try {
+          transactions = JSON.parse(savedTx) || [];
+        } catch (e) {
+          transactions = [];
+        }
+      } else {
+        // Kiểm tra xem có giao dịch V3 cũ để migrate không
+        const oldTx = localStorage.getItem('QUANLYCHITIEU_DATA_REAL_V3');
+        if (oldTx) {
+          try { transactions = JSON.parse(oldTx) || []; } catch(e) { transactions = []; }
+        } else {
+          transactions = [];
+        }
+        saveTransactions();
+      }
+
+      // 3. Cài đặt ngày mặc định cho các input
+      initDateInputs();
+
+      // 4. Cập nhật ngày hiển thị
+      updateHeaderDateDisplay();
+
+      // 5. Cập nhật toàn bộ giao diện và Biểu đồ
+      refreshAll();
+    });
+
+    function saveFunds() {
+      localStorage.setItem(FUNDS_KEY, JSON.stringify(funds));
+    }
+
+    function saveTransactions() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    }
+
+    function getFundName(key) {
+      if (key === 'SAVINGS') return 'Quỹ Tiết Kiệm';
+      if (key === 'EMERGENCY') return 'Quỹ Khẩn Cấp';
+      return 'Quỹ Chi Tiêu';
+    }
+
+    function getFundExpenses(fundKey) {
+      return transactions
+        .filter(t => {
+          if (t.type !== 'EXPENSE') return false;
+          if (fundKey === 'SPENDING') {
+            return t.fund === 'SPENDING' || !t.fund || t.fund === 'NEC' || t.fund === 'WANT' || t.fund === 'GROWTH';
+          }
+          return t.fund === fundKey;
+        })
+        .reduce((sum, t) => sum + t.amount, 0);
+    }
+
+    function getFundRemain(fundKey) {
+      const total = funds[fundKey] || 0;
+      const used = getFundExpenses(fundKey);
+      return Math.max(0, total - used);
+    }
+
+    function switchFundTab(tabKey) {
+      activeFundTab = tabKey;
+
+      const tabs = ['SPENDING', 'SAVINGS', 'EMERGENCY'];
+      tabs.forEach(t => {
+        const btn = document.getElementById('tabBtn' + t);
+        if (!btn) return;
+        if (t === tabKey) {
+          if (t === 'SPENDING') btn.className = 'py-1.5 px-1 rounded bg-[#22a05b] text-white shadow-sm font-bold transition';
+          else if (t === 'SAVINGS') btn.className = 'py-1.5 px-1 rounded bg-blue-600 text-white shadow-sm font-bold transition';
+          else btn.className = 'py-1.5 px-1 rounded bg-amber-600 text-white shadow-sm font-bold transition';
+        } else {
+          btn.className = 'py-1.5 px-1 rounded bg-transparent text-gray-600 hover:bg-white/60 font-semibold transition';
+        }
+      });
+
+      const heading = document.getElementById('activeFundHeading');
+      const tag = document.getElementById('activeFundTag');
+      if (heading && tag) {
+        if (tabKey === 'SPENDING') {
+          heading.innerHTML = '<span>🛒</span> Đang xem: QUỸ CHI TIÊU';
+          heading.className = 'text-emerald-800 flex items-center gap-1 font-bold';
+          tag.innerText = 'Ví sinh hoạt hàng ngày';
+          tag.className = 'text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200';
+        } else if (tabKey === 'SAVINGS') {
+          heading.innerHTML = '<span>🏦</span> Đang xem: QUỸ TIẾT KIỆM';
+          heading.className = 'text-blue-800 flex items-center gap-1 font-bold';
+          tag.innerText = 'Tích lũy & Mục tiêu tương lai';
+          tag.className = 'text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200';
+        } else {
+          heading.innerHTML = '<span>🚨</span> Đang xem: QUỸ KHẨN CẤP';
+          heading.className = 'text-amber-800 flex items-center gap-1 font-bold';
+          tag.innerText = 'Dự phòng rủi ro 3-6 tháng';
+          tag.className = 'text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200';
+        }
+      }
+
+      renderFundDoughnutChart();
+    }
+
+    function updateTransferUI() {
+      const source = document.getElementById('transferSource')?.value || 'INCOME';
+      const notice = document.getElementById('transferSpendingNotice');
+      const availableEl = document.getElementById('transferSpendingAvailable');
+      
+      if (source === 'FROM_SPENDING') {
+        if (notice) notice.classList.remove('hidden');
+        if (availableEl) availableEl.innerText = formatVND(getFundRemain('SPENDING'));
+      } else {
+        if (notice) notice.classList.add('hidden');
+      }
+    }
+
+    function updateExpenseFundBalanceNotice() {
+      const selectedFund = document.getElementById('expenseFund')?.value || 'SPENDING';
+      const remain = getFundRemain(selectedFund);
+      const labelEl = document.getElementById('expenseFundNoticeLabel');
+      const amountEl = document.getElementById('expenseFormRemainFund');
+      if (labelEl) labelEl.innerHTML = `<span>🛡️</span> ${getFundName(selectedFund)} Còn Lại:`;
+      if (amountEl) {
+        amountEl.innerText = formatVND(remain);
+        amountEl.className = remain <= 0 ? 'font-extrabold text-rose-600 text-sm' : 'font-extrabold text-emerald-700 text-sm';
+      }
+    }
+
+    // -------------------------------------------------------------
+    // XỬ LÝ CHUYỂN TIỀN VÀO QUỸ (THEO 2 NGUỒN: THU NHẬP & QUỸ CHI TIÊU)
+    // -------------------------------------------------------------
+    function handleTransferFundSubmit() {
+      const targetFund = document.getElementById('transferTargetFund').value;
+      const source = document.getElementById('transferSource').value;
+      const amountInput = document.getElementById('transferAmount');
+      const amount = parseCurrencyString(amountInput.value);
+
+      if (amount <= 0) {
+        alert('Vui lòng nhập số tiền lớn hơn 0 để nạp / chuyển vào quỹ!');
+        return;
+      }
+
+      if (source === 'FROM_SPENDING') {
+        if (targetFund === 'SPENDING') {
+          alert('Không thể trích từ Quỹ Chi Tiêu vào chính Quỹ Chi Tiêu! Vui lòng chọn Quỹ Tiết Kiệm hoặc Quỹ Khẩn Cấp.');
+          return;
+        }
+
+        const remainSpending = getFundRemain('SPENDING');
+        if (amount > remainSpending) {
+          alert(
+            `⛔ CẤM ĐỂ QUỸ ÂM! KHÔNG THỂ TRÍCH TIỀN!\n\n` +
+            `• Số tiền muốn trích: ${formatVND(amount)}\n` +
+            `• Quỹ Chi Tiêu hiện còn khả dụng: ${formatVND(remainSpending)}\n` +
+            `• Khoản thiếu hụt: ${formatVND(amount - remainSpending)}\n\n` +
+            `👉 Bạn không thể trích vượt quá số dư hiện có của Quỹ Chi Tiêu!`
+          );
+          return;
+        }
+
+        funds.SPENDING -= amount;
+        funds[targetFund] += amount;
+
+        const newTx = {
+          id: 'tx_' + Date.now(),
+          type: 'TRANSFER',
+          amount: amount,
+          category: `Trích Quỹ Chi Tiêu ➔ ${getFundName(targetFund)}`,
+          fund: targetFund,
+          sourceFund: 'SPENDING',
+          date: new Date().toISOString().split('T')[0],
+          note: `Trích chuyển từ Quỹ Chi Tiêu sang ${getFundName(targetFund)}`,
+          createdAt: Date.now()
+        };
+        transactions.unshift(newTx);
+        saveFunds();
+        saveTransactions();
+        amountInput.value = '';
+        refreshAll();
+        showFlashNotice(`Đã trích ${formatVND(amount)} từ Quỹ Chi Tiêu sang ${getFundName(targetFund)}!`);
+      } else {
+        // Nguồn 1: Thu nhập / Nạp mới từ ngoài
+        funds[targetFund] += amount;
+        const newTx = {
+          id: 'tx_' + Date.now(),
+          type: 'FUND_DEPOSIT',
+          amount: amount,
+          category: `Nạp Tiền: ${getFundName(targetFund)}`,
+          fund: targetFund,
+          sourceFund: 'INCOME',
+          date: new Date().toISOString().split('T')[0],
+          note: `Nạp tiền từ Thu nhập vào ${getFundName(targetFund)}`,
+          createdAt: Date.now()
+        };
+        transactions.unshift(newTx);
+        saveFunds();
+        saveTransactions();
+        amountInput.value = '';
+        refreshAll();
+        showFlashNotice(`Đã nạp ${formatVND(amount)} vào ${getFundName(targetFund)} thành công!`);
+      }
+    }
+
+    function handleIncomeSubmit(e) {
+      e.preventDefault();
+      const amountInput = document.getElementById('incomeAmount');
+      const amount = parseCurrencyString(amountInput.value);
+      if (amount <= 0) {
+        alert('Vui lòng nhập số tiền thu hợp lệ lớn hơn 0!');
+        return;
+      }
+
+      const category = document.getElementById('incomeCategory').value;
+      const date = document.getElementById('incomeDate').value;
+      const note = document.getElementById('incomeNote').value.trim() || category;
+      const targetFundRadio = document.querySelector('input[name="incomeTargetFund"]:checked')?.value || 'NONE';
+      const isAddToFund = targetFundRadio !== 'NONE';
+
+      const newTx = {
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        type: 'INCOME',
+        amount: amount,
+        category: category,
+        fund: targetFundRadio,
+        date: date,
+        note: note,
+        addedToFund: isAddToFund,
+        createdAt: Date.now()
+      };
+
+      transactions.unshift(newTx);
+      saveTransactions();
+
+      if (isAddToFund) {
+        funds[targetFundRadio] += amount;
+        saveFunds();
+      }
+
+      // Reset form
+      amountInput.value = '';
+      document.getElementById('incomeNote').value = '';
+      const defaultRadio = document.querySelector('input[name="incomeTargetFund"][value="NONE"]');
+      if (defaultRadio) defaultRadio.checked = true;
+      initDateInputs();
+
+      refreshAll();
+      showFlashNotice(`Đã ghi nhận Tiền Thu: +${formatVND(amount)}${isAddToFund ? ` (Đã chuyển vào ${getFundName(targetFundRadio)})` : ' (Thu ngoài Quỹ)'}`);
+    }
+
+    function handleExpenseSubmit(e) {
+      e.preventDefault();
+      const amountInput = document.getElementById('expenseAmount');
+      const amount = parseCurrencyString(amountInput.value);
+      if (amount <= 0) {
+        alert('Vui lòng nhập số tiền chi hợp lệ lớn hơn 0!');
+        return;
+      }
+
+      const selectedFund = document.getElementById('expenseFund').value; // 'SPENDING' | 'SAVINGS' | 'EMERGENCY'
+      const remain = getFundRemain(selectedFund);
+
+      // QUY TẮC BẮT BUỘC: CẤM ĐỂ QUỸ ÂM!
+      if (amount > remain) {
+        alert(
+          `⛔ CẤM ĐỂ QUỸ ÂM! KHÔNG THỂ CHI TIÊU!\n\n` +
+          `• Nguồn trích: ${getFundName(selectedFund)}\n` +
+          `• Số tiền bạn muốn chi: ${formatVND(amount)}\n` +
+          `• Số dư quỹ còn lại: ${formatVND(remain)}\n` +
+          `• Khoản thiếu hụt: ${formatVND(amount - remain)}\n\n` +
+          `👉 QUY TẮC BẮT BUỘC: CẤM ĐỂ QUỸ ÂM!\nVui lòng nạp thêm tiền vào ${getFundName(selectedFund)} trước khi chi khoản này!`
+        );
+        return;
+      }
+
+      const category = document.getElementById('expenseCategory').value;
+      const date = document.getElementById('expenseDate').value;
+      const note = document.getElementById('expenseNote').value.trim() || category;
+
+      const newTx = {
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        type: 'EXPENSE',
+        amount: amount,
+        category: category,
+        fund: selectedFund,
+        date: date,
+        note: note,
+        createdAt: Date.now()
+      };
+
+      transactions.unshift(newTx);
+      saveTransactions();
+
+      // Reset form
+      amountInput.value = '';
+      document.getElementById('expenseNote').value = '';
+      initDateInputs();
+
+      refreshAll();
+      showFlashNotice(`Đã ghi nhận khoản chi: -${formatVND(amount)} (Trích từ ${getFundName(selectedFund)})`);
+    }
+
+    function deleteTransaction(id) {
+      const tx = transactions.find(t => t.id === id);
+      if (!tx) return;
+      if (confirm('Bạn có chắc chắn muốn xóa giao dịch này không?')) {
+        if (tx.type === 'INCOME' && tx.addedToFund && tx.fund && tx.fund !== 'NONE') {
+          if (funds[tx.fund] - tx.amount < getFundExpenses(tx.fund)) {
+            alert(`⚠️ Không thể xóa khoản thu này vì tiền trong ${getFundName(tx.fund)} đã được sử dụng!\nNếu trừ khoản này, Quỹ sẽ bị âm! Quy tắc: CẤM ĐỂ QUỸ ÂM.`);
+            return;
+          }
+          funds[tx.fund] -= tx.amount;
+          saveFunds();
+        }
+        transactions = transactions.filter(t => t.id !== id);
+        saveTransactions();
+        refreshAll();
+      }
+    }
+
+    function showFlashNotice(msg) {
+      // Toast message góc phải
+      let toast = document.getElementById('toastNotice');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toastNotice';
+        toast.className = 'fixed bottom-5 right-5 bg-emerald-800 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold z-50 flex items-center gap-2 transition-all transform duration-300';
+        document.body.appendChild(toast);
+      }
+      toast.innerHTML = `<span>✅</span> <span>${msg}</span>`;
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+      }, 3000);
+    }
+
+    // -------------------------------------------------------------
+    // LOGIC TÍNH TOÁN KPI (NGÀY, TUẦN, THÁNG, NĂM)
+    // -------------------------------------------------------------
+    function calculateKPIs() {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      // Xác định thứ 2 đầu tuần hiện tại
+      const dayOfWeek = now.getDay(); // 0 is Sunday
+      const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // 0 to 11
+
+      let dayInc = 0, dayExp = 0;
+      let weekInc = 0, weekExp = 0;
+      let monthInc = 0, monthExp = 0;
+      let yearInc = 0, yearExp = 0;
+
+      transactions.forEach(t => {
+        const tDate = new Date(t.date + 'T00:00:00');
+        const amt = t.amount;
+
+        // 1. Ngày hôm nay
+        if (t.date === todayStr) {
+          if (t.type === 'INCOME') dayInc += amt;
+          else dayExp += amt;
+        }
+
+        // 2. Tuần này (Thứ 2 đến CN)
+        if (tDate >= monday && tDate <= sunday) {
+          if (t.type === 'INCOME') weekInc += amt;
+          else weekExp += amt;
+        }
+
+        // 3. Tháng này
+        if (tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth) {
+          if (t.type === 'INCOME') monthInc += amt;
+          else monthExp += amt;
+        }
+
+        // 4. Năm nay
+        if (tDate.getFullYear() === currentYear) {
+          if (t.type === 'INCOME') yearInc += amt;
+          else yearExp += amt;
+        }
+      });
+
+      // Render lên UI
+      document.getElementById('kpiDayIncome').innerText = formatVND(dayInc);
+      document.getElementById('kpiDayExpense').innerText = formatVND(dayExp);
+      const dayNet = dayInc - dayExp;
+      const kpiDayNet = document.getElementById('kpiDayNet');
+      kpiDayNet.innerText = formatVND(dayNet);
+      kpiDayNet.className = dayNet >= 0 ? 'font-bold text-blue-600' : 'font-bold text-rose-600';
+
+      document.getElementById('kpiWeekIncome').innerText = formatVND(weekInc);
+      document.getElementById('kpiWeekExpense').innerText = formatVND(weekExp);
+      const weekNet = weekInc - weekExp;
+      const kpiWeekNet = document.getElementById('kpiWeekNet');
+      kpiWeekNet.innerText = formatVND(weekNet);
+      kpiWeekNet.className = weekNet >= 0 ? 'font-bold text-blue-600' : 'font-bold text-rose-600';
+
+      document.getElementById('kpiMonthIncome').innerText = formatVND(monthInc);
+      document.getElementById('kpiMonthExpense').innerText = formatVND(monthExp);
+      const monthNet = monthInc - monthExp;
+      const kpiMonthNet = document.getElementById('kpiMonthNet');
+      kpiMonthNet.innerText = formatVND(monthNet);
+      kpiMonthNet.className = monthNet >= 0 ? 'font-extrabold text-blue-700' : 'font-extrabold text-rose-700';
+
+      document.getElementById('kpiYearIncome').innerText = formatVND(yearInc);
+      document.getElementById('kpiYearExpense').innerText = formatVND(yearExp);
+      const yearNet = yearInc - yearExp;
+      const kpiYearNet = document.getElementById('kpiYearNet');
+      kpiYearNet.innerText = formatVND(yearNet);
+      kpiYearNet.className = yearNet >= 0 ? 'font-bold text-blue-600' : 'font-bold text-rose-600';
+
+      return {
+        monthInc,
+        monthExp,
+        monthNet
+      };
+    }
+
+    // -------------------------------------------------------------
+    // LOGIC BIỂU ĐỒ TRÒN TRẠNG THÁI QUỸ:
+    // TỔNG QUỸ - QUỸ CÒN LẠI - QUỸ ĐÃ DÙNG
+    // -------------------------------------------------------------
+    function renderFundDoughnutChart() {
+      const fundKey = activeFundTab;
+      const totalFund = funds[fundKey] || 0;
+      const usedFund = getFundExpenses(fundKey);
+      const remainFund = Math.max(0, totalFund - usedFund);
+
+      // Cập nhật text số liệu 3 ô cho Quỹ đang chọn
+      document.getElementById('sumTotalFund').innerText = formatVND(totalFund);
+      document.getElementById('sumUsedFund').innerText = formatVND(usedFund);
+      document.getElementById('sumRemainFund').innerText = formatVND(remainFund);
+
+      // Cập nhật thẻ tóm tắt tổng thể 3 Quỹ
+      const remainSpending = getFundRemain('SPENDING');
+      const remainSavings = getFundRemain('SAVINGS');
+      const remainEmergency = getFundRemain('EMERGENCY');
+      const totalAll = remainSpending + remainSavings + remainEmergency;
+
+      const miniSpending = document.getElementById('miniRemainSpending');
+      const miniSavings = document.getElementById('miniRemainSavings');
+      const miniEmergency = document.getElementById('miniRemainEmergency');
+      const totalAllEl = document.getElementById('totalAllFundsSum');
+
+      if (miniSpending) miniSpending.innerText = formatVND(remainSpending);
+      if (miniSavings) miniSavings.innerText = formatVND(remainSavings);
+      if (miniEmergency) miniEmergency.innerText = formatVND(remainEmergency);
+      if (totalAllEl) totalAllEl.innerText = formatVND(totalAll);
+
+      // Cập nhật số dư Quỹ Còn Lại hiển thị trực tiếp trong Form Chi Tiêu
+      updateExpenseFundBalanceNotice();
+      updateTransferUI();
+
+      // Render Chart.js
+      const ctx = document.getElementById('fundDoughnutChart');
+      if (!ctx) return;
+
+      let themeColor = '#22a05b'; // xanh lá cho Quỹ Chi Tiêu
+      if (fundKey === 'SAVINGS') themeColor = '#2563eb'; // xanh dương cho Quỹ Tiết Kiệm
+      if (fundKey === 'EMERGENCY') themeColor = '#d97706'; // cam cho Quỹ Khẩn Cấp
+
+      let chartData;
+      if (totalFund === 0) {
+        chartData = {
+          labels: [`${getFundName(fundKey)} chưa có tiền (0 đ)`],
+          datasets: [{
+            data: [1],
+            backgroundColor: ['#e2e8f0'],
+            borderColor: ['#ffffff'],
+            borderWidth: 2,
+            hoverOffset: 4
+          }]
+        };
+      } else {
+        chartData = {
+          labels: ['Còn Lại', 'Đã Dùng'],
+          datasets: [{
+            data: [remainFund, usedFund],
+            backgroundColor: [
+              themeColor,
+              '#e11d48'
+            ],
+            borderColor: ['#ffffff', '#ffffff'],
+            borderWidth: 2,
+            hoverOffset: 6
+          }]
+        };
+      }
+
+      if (doughnutChartInstance) {
+        doughnutChartInstance.data = chartData;
+        doughnutChartInstance.update();
+      } else {
+        doughnutChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '68%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 12,
+                  font: { family: 'Be Vietnam Pro', size: 11, weight: '600' }
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    if (totalFund === 0) {
+                      return ` ${getFundName(fundKey)}: 0 đ (Hãy nạp tiền vào quỹ)`;
+                    }
+                    const label = context.label || '';
+                    const val = context.raw || 0;
+                    const pct = totalFund > 0 ? Math.round((val / totalFund) * 100) : 0;
+                    return ` ${label}: ${formatVND(val)}${totalFund > 0 ? ` (${pct}%)` : ''}`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // LOGIC BIỂU ĐỒ CỘT THU VS CHI THEO KHOẢNG THỜI GIAN
+    // -------------------------------------------------------------
+    function switchBarPeriod(period) {
+      currentBarPeriod = period;
+
+      const btns = {
+        DAY: document.getElementById('btnPeriodDay'),
+        WEEK: document.getElementById('btnPeriodWeek'),
+        MONTH: document.getElementById('btnPeriodMonth'),
+        YEAR: document.getElementById('btnPeriodYear')
+      };
+
+      Object.keys(btns).forEach(k => {
+        if (!btns[k]) return;
+        if (k === period) {
+          btns[k].className = 'px-2.5 py-1 text-xs font-semibold border border-emerald-400 bg-[#22a05b] text-white';
+        } else {
+          btns[k].className = 'px-2.5 py-1 text-xs font-semibold border border-emerald-400 bg-white text-emerald-800 hover:bg-emerald-50';
+        }
+      });
+
+      renderBarComparisonChart();
+    }
+
+    function renderBarComparisonChart() {
+      const ctx = document.getElementById('barComparisonChart');
+      if (!ctx) return;
+
+      const now = new Date();
+      let labels = [];
+      let incomeData = [];
+      let expenseData = [];
+
+      if (currentBarPeriod === 'DAY') {
+        // 7 ngày gần nhất
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now.getTime() - i * 86400000);
+          const iso = d.toISOString().split('T')[0];
+          const label = `${d.getDate()}/${d.getMonth() + 1}`;
+          labels.push(label);
+
+          let inc = 0, exp = 0;
+          transactions.forEach(t => {
+            if (t.date === iso) {
+              if (t.type === 'INCOME') inc += t.amount;
+              else exp += t.amount;
+            }
+          });
+          incomeData.push(inc);
+          expenseData.push(exp);
+        }
+      } else if (currentBarPeriod === 'WEEK') {
+        // 4 tuần gần nhất
+        for (let w = 3; w >= 0; w--) {
+          const start = new Date(now.getTime() - (w * 7 + 6) * 86400000);
+          const end = new Date(now.getTime() - (w * 7) * 86400000);
+          labels.push(`Tuần ${4 - w}`);
+
+          let inc = 0, exp = 0;
+          transactions.forEach(t => {
+            const td = new Date(t.date + 'T00:00:00');
+            if (td >= start && td <= end) {
+              if (t.type === 'INCOME') inc += t.amount;
+              else exp += t.amount;
+            }
+          });
+          incomeData.push(inc);
+          expenseData.push(exp);
+        }
+      } else if (currentBarPeriod === 'MONTH') {
+        // 6 tháng gần nhất
+        for (let m = 5; m >= 0; m--) {
+          const target = new Date(now.getFullYear(), now.getMonth() - m, 1);
+          const targetY = target.getFullYear();
+          const targetM = target.getMonth();
+          labels.push(`T${targetM + 1}/${targetY}`);
+
+          let inc = 0, exp = 0;
+          transactions.forEach(t => {
+            const td = new Date(t.date + 'T00:00:00');
+            if (td.getFullYear() === targetY && td.getMonth() === targetM) {
+              if (t.type === 'INCOME') inc += t.amount;
+              else exp += t.amount;
+            }
+          });
+          incomeData.push(inc);
+          expenseData.push(exp);
+        }
+      } else { // YEAR
+        // 12 tháng trong năm hiện tại
+        const curY = now.getFullYear();
+        for (let m = 0; m < 12; m++) {
+          labels.push(`Thg ${m + 1}`);
+          let inc = 0, exp = 0;
+          transactions.forEach(t => {
+            const td = new Date(t.date + 'T00:00:00');
+            if (td.getFullYear() === curY && td.getMonth() === m) {
+              if (t.type === 'INCOME') inc += t.amount;
+              else exp += t.amount;
+            }
+          });
+          incomeData.push(inc);
+          expenseData.push(exp);
+        }
+      }
+
+      const chartConfig = {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Tiền Thu',
+            data: incomeData,
+            backgroundColor: '#22a05b',
+            borderRadius: 4,
+            maxBarThickness: 32
+          },
+          {
+            label: 'Tiền Chi',
+            data: expenseData,
+            backgroundColor: '#e11d48',
+            borderRadius: 4,
+            maxBarThickness: 32
+          }
+        ]
+      };
+
+      if (barChartInstance) {
+        barChartInstance.data = chartConfig;
+        barChartInstance.update();
+      } else {
+        barChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: chartConfig,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` ${context.dataset.label}: ${formatVND(context.raw)}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { font: { family: 'Be Vietnam Pro', size: 11 } }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    if (value >= 1000000) return (value / 1000000) + ' Tr';
+                    if (value >= 1000) return (value / 1000) + ' k';
+                    return value;
+                  },
+                  font: { family: 'Be Vietnam Pro', size: 10 }
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // RENDER BẢNG LỊCH SỬ THU CHI VÀ TÌM KIẾM
+    // -------------------------------------------------------------
+    function renderHistoryTable() {
+      const tbody = document.getElementById('transactionTableBody');
+      const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const filterType = document.getElementById('filterType').value;
+      const filterFund = document.getElementById('filterFund').value;
+
+      let filtered = transactions.filter(t => {
+        if (filterType !== 'ALL' && t.type !== filterType) return false;
+        if (filterFund !== 'ALL' && t.fund !== filterFund) return false;
+        if (search) {
+          const matchNote = (t.note || '').toLowerCase().includes(search);
+          const matchCat = (t.category || '').toLowerCase().includes(search);
+          if (!matchNote && !matchCat) return false;
+        }
+        return true;
+      });
+
+      document.getElementById('totalTransactionsBadge').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-8 text-center text-gray-500 font-medium">
+              Chưa có khoản thu chi nào (0 đ). Hãy nhập khoản tiền thu hoặc chi ở ô bên trên!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(t => {
+        const isInc = t.type === 'INCOME';
+        const typeBadge = isInc 
+          ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">THU (+)</span>` 
+          : `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">CHI (-)</span>`;
+        
+        const amountDisplay = isInc 
+          ? `<span class="font-bold text-emerald-600">+${formatVND(t.amount)}</span>` 
+          : `<span class="font-bold text-rose-600">-${formatVND(t.amount)}</span>`;
+
+        let fundBadge = '';
+        if (isInc) {
+          if (t.addedToFund && t.fund && t.fund !== 'NONE') {
+            fundBadge = `<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-300 text-[10px] font-semibold">Nạp vào ${getFundName(t.fund)}</span>`;
+          } else {
+            fundBadge = '<span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-300 text-[10px]">Thu ngoài Quỹ</span>';
+          }
+        } else if (t.type === 'TRANSFER' || t.type === 'FUND_DEPOSIT') {
+          fundBadge = `<span class="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded border border-blue-300 text-[10px] font-bold">Chuyển Quỹ</span>`;
+        } else {
+          fundBadge = `<span class="bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200 text-[10px]">Trích ${getFundName(t.fund || 'SPENDING')}</span>`;
+        }
+
+        return `
+          <tr class="hover:bg-emerald-50/40 transition">
+            <td class="py-2.5 px-3 text-gray-600 whitespace-nowrap font-medium">${t.date}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap">${typeBadge}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap">${amountDisplay}</td>
+            <td class="py-2.5 px-3 text-gray-800 font-semibold">${t.category || '--'}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap">${fundBadge}</td>
+            <td class="py-2.5 px-3 text-gray-600 max-w-xs truncate" title="${t.note || ''}">${t.note || '--'}</td>
+            <td class="py-2.5 px-3 text-center whitespace-nowrap">
+              <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50" title="Xóa giao dịch">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // -------------------------------------------------------------
+    // QUẢN LÝ MODAL THIẾT LẬP HẠN MỨC QUỸ
+    // -------------------------------------------------------------
+    function openBudgetModal() {
+      const modal = document.getElementById('budgetModal');
+      const input = document.getElementById('modalBudgetAmount');
+      input.value = new Intl.NumberFormat('vi-VN').format(funds.SPENDING);
+      updateBudgetModalSuggestions(funds.SPENDING);
+      modal.classList.remove('hidden');
+    }
+
+    function closeBudgetModal() {
+      document.getElementById('budgetModal').classList.add('hidden');
+    }
+
+    function updateBudgetModalSuggestions(val) {
+      document.getElementById('suggNecVal').innerText = formatVND(val * 0.55);
+      document.getElementById('suggWantVal').innerText = formatVND(val * 0.20);
+      document.getElementById('suggGrowthVal').innerText = formatVND(val * 0.25);
+    }
+
+    // Lắng nghe input hạn mức quỹ trong modal (kiểm tra element tồn tại)
+    const _modalBudgetEl = document.getElementById('modalBudgetAmount');
+    if (_modalBudgetEl) {
+      _modalBudgetEl.addEventListener('input', function() {
+        const val = parseCurrencyString(this.value);
+        updateBudgetModalSuggestions(val);
+      });
+    }
+
+    function saveBudgetSetting() {
+      const input = document.getElementById('modalBudgetAmount');
+      const val = parseCurrencyString(input.value);
+      if (val < 0) {
+        alert('Hạn mức quỹ không thể là số âm!');
+        return;
+      }
+      funds.SPENDING = val;
+      saveFunds();
+      closeBudgetModal();
+      refreshAll();
+      showFlashNotice('Đã cập nhật hạn mức Quỹ Chi Tiêu: ' + formatVND(funds.SPENDING));
+    }
+
+    // Modal hướng dẫn quy trình
+    function openGuideModal() {
+      document.getElementById('guideModal').classList.remove('hidden');
+    }
+    function closeGuideModal() {
+      document.getElementById('guideModal').classList.add('hidden');
+    }
+
+    // -------------------------------------------------------------
+    // TIỆN ÍCH XUẤT CSV & ĐẶT LẠI DỮ LIỆU
+    // -------------------------------------------------------------
+    function exportToCSV() {
+      if (transactions.length === 0) {
+        alert('Chưa có giao dịch để xuất dữ liệu!');
+        return;
+      }
+
+      let csvContent = "\uFEFF"; // UTF-8 BOM cho Excel mở tiếng Việt không lỗi font
+      csvContent += "ID,Ngay,Loai,SoTien,DanhMuc,Quy,GhiChu\n";
+
+      transactions.forEach(t => {
+        const cleanNote = (t.note || '').replace(/"/g, '""');
+        csvContent += `"${t.id}","${t.date}","${t.type}","${t.amount}","${t.category}","${t.fund}","${cleanNote}"\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Bao_Cao_Thu_Chi_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function clearAllDataPrompt() {
+      if (confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu và đưa tất cả 3 Quỹ và Thu Chi về 0 đ không?')) {
+        transactions = [];
+        saveTransactions();
+        funds = { SPENDING: 0, SAVINGS: 0, EMERGENCY: 0 };
+        saveFunds();
+        refreshAll();
+        showFlashNotice('Đã xóa trắng toàn bộ dữ liệu. Tất cả về 0 đ!');
+      }
+    }
+
+    // Toggle Sidebar trên Mobile
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('hidden');
+    });
+
+    // -------------------------------------------------------------
+    // HÀM ĐỒNG BỘ TOÀN BỘ GIAO DIỆN
+    // -------------------------------------------------------------
+    function refreshAll() {
+      calculateKPIs();
+      renderFundDoughnutChart();
+      renderBarComparisonChart();
+      renderHistoryTable();
+      updateExpenseFundBalanceNotice();
+      updateTransferUI();
+      // Cập nhật sidebar budget
+      const quickBudget = document.getElementById('quickBudgetVal');
+      if (quickBudget) quickBudget.innerText = formatVND(funds.SPENDING);
+    }
+  </script>
+</body>
+</html>
